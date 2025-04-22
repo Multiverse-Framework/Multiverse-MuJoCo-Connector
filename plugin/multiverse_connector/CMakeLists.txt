@@ -12,16 +12,22 @@ set(MUJOCO_MULTIVERSE_CONNECTOR_LIB
   ${CMAKE_CURRENT_SOURCE_DIR}/lib
 )
 
+if (UNIX)
+  set(ZMQ_LIB zmq)
+elseif (WIN32)
+  set(ZMQ_LIB libzmq-mt-4_3_5)
+endif()
+
 add_library(multiverse_connector SHARED)
 target_sources(multiverse_connector PRIVATE ${MUJOCO_MULTIVERSE_CONNECTOR_SRCS})
 target_include_directories(multiverse_connector PRIVATE ${MUJOCO_MULTIVERSE_CONNECTOR_INCLUDE})
 target_link_directories(multiverse_connector PRIVATE ${MUJOCO_MULTIVERSE_CONNECTOR_LIB})
-target_link_libraries(multiverse_connector PRIVATE 
+target_link_libraries(multiverse_connector PRIVATE
   mujoco
   multiverse_client_json
   multiverse_client
   jsoncpp
-  zmq
+  ${ZMQ_LIB}
 )
 target_compile_options(
   multiverse_connector

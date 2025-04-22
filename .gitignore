@@ -30,4 +30,4 @@
 build/*
 install/*
 src/*
-ext/msys2/*
+ext/*
