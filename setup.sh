@@ -40,7 +40,7 @@ if [ ! -d $MUJOCO_PLUGIN_DIR ]; then
     mkdir -p $MUJOCO_PLUGIN_DIR
 fi
 cp -f $BUILD_DIR/lib/libmultiverse_connector.so $MUJOCO_PLUGIN_DIR
-ln -sf $MUJOCO_PLUGIN_DIR $INSTALL_DIR/bin
+ln -sf $MUJOCO_PLUGIN_DIR $INSTALL_DIR/bin/mujoco_plugin
 
 end_time=$(date +%s)
 elapsed=$(( end_time - start_time ))
