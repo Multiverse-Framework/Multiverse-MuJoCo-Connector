@@ -63,8 +63,12 @@ if errorlevel 1 (
 %CMAKE_EXECUTABLE% --build "%BUILD_DIR%" --config Release
 %CMAKE_EXECUTABLE% --install "%BUILD_DIR%"
 
-copy /Y "%BUILD_DIR%\bin\Release\multiverse_connector.dll" "%CD%\mujoco_plugin"
-xcopy /E /I /Y "%CD%\mujoco_plugin" "%INSTALL_DIR%\bin\mujoco_plugin"
+set "MUJOCO_PLUGIN_DIR=%CD%\mujoco_plugin\mujoco-%MUJOCO_VERSION%"
+if not exist "%MUJOCO_PLUGIN_DIR%" (
+    mkdir "%MUJOCO_PLUGIN_DIR%"
+)
+copy /Y "%BUILD_DIR%\bin\Release\multiverse_connector.dll" "%MUJOCO_PLUGIN_DIR%"
+xcopy /E /I /Y "%MUJOCO_PLUGIN_DIR%" "%INSTALL_DIR%\bin\mujoco_plugin"
 
 for /f %%a in ('powershell -Command "[int](Get-Date -UFormat %%s)"') do set END_TIME=%%a
 set /a ELAPSED=%END_TIME% - %START_TIME%

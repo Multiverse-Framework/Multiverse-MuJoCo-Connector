@@ -35,8 +35,12 @@ cmake -S $MUJOCO_SRC_DIR -B $BUILD_DIR -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR -DMUJ
 cmake --build $BUILD_DIR
 cmake --install $BUILD_DIR
 
-cp -f $BUILD_DIR/lib/libmultiverse_connector.so $PWD/mujoco_plugin
-ln -sf $PWD/mujoco_plugin $INSTALL_DIR/bin
+MUJOCO_PLUGIN_DIR=$PWD/mujoco_plugin/mujoco-$MUJOCO_VERSION
+if [ ! -d $MUJOCO_PLUGIN_DIR ]; then
+    mkdir -p $MUJOCO_PLUGIN_DIR
+fi
+cp -f $BUILD_DIR/lib/libmultiverse_connector.so $MUJOCO_PLUGIN_DIR
+ln -sf $MUJOCO_PLUGIN_DIR $INSTALL_DIR/bin
 
 end_time=$(date +%s)
 elapsed=$(( end_time - start_time ))
