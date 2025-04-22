@@ -1,5 +1,7 @@
 #!/bin/bash
 
+start_time=$(date +%s)
+
 CURRENT_DIR=$PWD
 cd $(dirname $0)
 SRC_DIR=$PWD/src
@@ -33,5 +35,10 @@ cmake -S $SRC_DIR -B $BUILD_DIR -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR -DMUJOCO_BUI
 cmake --build $BUILD_DIR
 cmake --install $BUILD_DIR
 
-cp -rf $BUILD_DIR/lib/libmultiverse_connector.so $PWD/mujoco_plugin
+cp -f $BUILD_DIR/lib/libmultiverse_connector.so $PWD/mujoco_plugin
 ln -sf $PWD/mujoco_plugin $INSTALL_DIR/bin
+
+end_time=$(date +%s)
+elapsed=$(( end_time - start_time ))
+
+echo "Build completed in $elapsed seconds"
