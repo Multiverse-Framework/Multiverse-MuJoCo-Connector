@@ -20,16 +20,6 @@ if not exist "%CMAKE_DIR%" (
 )
 set "CMAKE_EXECUTABLE=%CMAKE_DIR%\bin\cmake.exe"
 
-set "CMAKE_BUILD_DIR=%EXT_DIR%\vcpkg"
-set "VCPKG_DIR=%EXT_DIR%\vcpkg"
-if not exist "%VCPKG_DIR%" (
-    git clone https://github.com/Microsoft/vcpkg.git "%VCPKG_DIR%"
-    cd "%VCPKG_DIR%"
-    bootstrap-vcpkg.bat
-    cd %EXT_DIR%
-    .\vcpkg\vcpkg.exe install
-)
-
 set SRC_DIR=%CD%\src
 
 set MUJOCO_VERSION=3.3.0
