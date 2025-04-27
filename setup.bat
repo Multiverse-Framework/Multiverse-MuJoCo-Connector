@@ -59,6 +59,8 @@ if not exist "%MUJOCO_PLUGIN_DIR%" (
 )
 copy /Y "%BUILD_DIR%\bin\Release\multiverse_connector.dll" "%MUJOCO_PLUGIN_DIR%"
 xcopy /E /I /Y "%MUJOCO_PLUGIN_DIR%" "%INSTALL_DIR%\bin\mujoco_plugin"
+copy /Y "%CD%\plugin\multiverse_connector\lib\libzmq-mt-4_3_5.dll" "%INSTALL_DIR%\bin"
+copy /Y "%CD%\plugin\multiverse_connector\lib\jsoncpp.dll" "%INSTALL_DIR%\bin"
 
 for /f %%a in ('powershell -Command "[int](Get-Date -UFormat %%s)"') do set END_TIME=%%a
 set /a ELAPSED=%END_TIME% - %START_TIME%

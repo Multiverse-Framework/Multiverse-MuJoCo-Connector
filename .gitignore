@@ -27,6 +27,7 @@
 *.out
 *.app
 
+.vscode/*
 build/*
 install/*
 src/*
