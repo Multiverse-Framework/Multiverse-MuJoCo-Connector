@@ -7,16 +7,26 @@ set CURRENT_DIR=%CD%
 cd /d %~dp0
 
 set "EXT_DIR=%CD%\ext"
+set "ZIP_DIR=%EXT_DIR%\7zip"
+set "ZIP_EXECUTABLE=%ZIP_DIR%\7za.exe"
+if not exist "%ZIP_DIR%" (
+  mkdir "%ZIP_DIR%"
+  set "ZIP_FILE=7z2409-extra.7z"
+  powershell -NoProfile -Command "C:\Windows\System32\curl.exe --ssl-no-revoke -L -o %EXT_DIR%\!ZIP_FILE! https://www.7-zip.org/a/!ZIP_FILE!"
+  powershell -NoProfile -Command "tar -xf %EXT_DIR%\!ZIP_FILE! -C %ZIP_DIR%"
+  del "%EXT_DIR%\!ZIP_FILE!"
+)
+
 set "CMAKE_DIR=%EXT_DIR%\cmake"
-set "CMAKE_FILE_NAME=cmake-4.0.1-windows-x86_64"
-set "CMAKE_ZIP_FILE=%CMAKE_FILE_NAME%.zip"
 if not exist "%CMAKE_DIR%" (
-    if not exist "%EXT_DIR%\%CMAKE_ZIP_FILE%" (
-        powershell -NoProfile -Command "curl -o '%EXT_DIR%\%CMAKE_ZIP_FILE%' 'https://github.com/Kitware/CMake/releases/download/v4.0.1/%CMAKE_ZIP_FILE%'"
+    set "CMAKE_FILE_NAME=cmake-4.0.1-windows-x86_64"
+    set "CMAKE_ZIP_FILE=!CMAKE_FILE_NAME!.zip"
+    if not exist "%EXT_DIR%\!CMAKE_ZIP_FILE!" (
+        powershell -NoProfile -Command "C:\Windows\System32\curl.exe --ssl-no-revoke -L -o '%EXT_DIR%\!CMAKE_ZIP_FILE!' 'https://github.com/Kitware/CMake/releases/download/v4.0.1/!CMAKE_ZIP_FILE!'"
     )
-    powershell -NoProfile -Command "7z x '%EXT_DIR%\%CMAKE_ZIP_FILE%' -o'%EXT_DIR%'"
-    powershell -NoProfile -Command "move '%EXT_DIR%\%CMAKE_FILE_NAME%' '%CMAKE_DIR%'"
-    del "%EXT_DIR%\%CMAKE_ZIP_FILE%"
+    powershell -NoProfile -Command "%ZIP_EXECUTABLE% x '%EXT_DIR%\!CMAKE_ZIP_FILE!' -o'%EXT_DIR%'"
+    move "%EXT_DIR%\!CMAKE_FILE_NAME!" "%CMAKE_DIR%"
+    del "%EXT_DIR%\!CMAKE_ZIP_FILE!"
 )
 set "CMAKE_EXECUTABLE=%CMAKE_DIR%\bin\cmake.exe"
 
@@ -24,12 +34,12 @@ set SRC_DIR=%CD%\src
 
 set MUJOCO_VERSION=3.3.0
 set MUJOCO_SRC_DIR=%SRC_DIR%\mujoco-%MUJOCO_VERSION%
-set MUJOCO_ZIP_FILE=mujoco-%MUJOCO_VERSION%.zip
 if not exist "%SRC_DIR%" (
     mkdir "%SRC_DIR%"
-    powershell -NoProfile -Command "curl -o %SRC_DIR%\%MUJOCO_ZIP_FILE% https://github.com/google-deepmind/mujoco/archive/refs/tags/%MUJOCO_VERSION%.zip"
-    powershell -NoProfile -Command "7z x '%SRC_DIR%\%MUJOCO_ZIP_FILE%' -o'%SRC_DIR%'"
-    del "%SRC_DIR%\%MUJOCO_ZIP_FILE%"
+    set MUJOCO_ZIP_FILE=mujoco-%MUJOCO_VERSION%.zip
+    powershell -NoProfile -Command "C:\Windows\System32\curl.exe -o %SRC_DIR%\!MUJOCO_ZIP_FILE! https://github.com/google-deepmind/mujoco/archive/refs/tags/%MUJOCO_VERSION%.zip"
+    powershell -NoProfile -Command "%ZIP_EXECUTABLE% x '%SRC_DIR%\!MUJOCO_ZIP_FILE!' -o'%SRC_DIR%'"
+    del "%SRC_DIR%\!MUJOCO_ZIP_FILE!"
 )
 
 set BUILD_DIR=%CD%\build\mujoco-%MUJOCO_VERSION%
