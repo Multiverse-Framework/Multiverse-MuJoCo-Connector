@@ -34,10 +34,11 @@ set SRC_DIR=%CD%\src
 
 set MUJOCO_VERSION=3.3.2
 set MUJOCO_SRC_DIR=%SRC_DIR%\mujoco-%MUJOCO_VERSION%
-if not exist "%SRC_DIR%" (
-    mkdir "%SRC_DIR%"
-    set MUJOCO_ZIP_FILE=mujoco-%MUJOCO_VERSION%.zip
-    powershell -NoProfile -Command "C:\Windows\System32\curl.exe -o %SRC_DIR%\!MUJOCO_ZIP_FILE! https://github.com/google-deepmind/mujoco/archive/refs/tags/%MUJOCO_VERSION%.zip"
+if not exist "%MUJOCO_SRC_DIR%" (
+    mkdir "%MUJOCO_SRC_DIR%"
+    set MUJOCO_ZIP_FILE=mujoco-%MUJOCO_VERSION%-windows-x86_64.zip
+    echo https://github.com/google-deepmind/mujoco/archive/refs/tags/%MUJOCO_VERSION%/mujoco-%MUJOCO_VERSION%-windows-x86_64.zip
+    powershell -NoProfile -Command "C:\Windows\System32\curl.exe --ssl-no-revoke -L -o %SRC_DIR%\!MUJOCO_ZIP_FILE! https://github.com/google-deepmind/mujoco/archive/refs/tags/%MUJOCO_VERSION%/mujoco-%MUJOCO_VERSION%-windows-x86_64.zip"
     powershell -NoProfile -Command "%ZIP_EXECUTABLE% x '%SRC_DIR%\!MUJOCO_ZIP_FILE!' -o'%SRC_DIR%'"
     del "%SRC_DIR%\!MUJOCO_ZIP_FILE!"
 )
