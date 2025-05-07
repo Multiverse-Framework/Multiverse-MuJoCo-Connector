@@ -32,7 +32,7 @@ set "CMAKE_EXECUTABLE=%CMAKE_DIR%\bin\cmake.exe"
 
 set SRC_DIR=%CD%\src
 
-set MUJOCO_VERSION=3.3.0
+set MUJOCO_VERSION=3.3.2
 set MUJOCO_SRC_DIR=%SRC_DIR%\mujoco-%MUJOCO_VERSION%
 if not exist "%SRC_DIR%" (
     mkdir "%SRC_DIR%"
