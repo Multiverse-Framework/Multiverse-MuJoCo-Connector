@@ -322,7 +322,6 @@ namespace mujoco::plugin::multiverse_connector
     config.simulation_name = GetStringAttr(m, instance, simulation_name_str, config.simulation_name);
 
     Json::Reader reader;
-
     std::string send_json_str = GetStringAttr(m, instance, send_str);
     replace_all(send_json_str, "'", "\"");
     Json::Value send_json = string_to_json(send_json_str);
