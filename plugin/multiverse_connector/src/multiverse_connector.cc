@@ -339,10 +339,8 @@ namespace mujoco::plugin::multiverse_connector
       const int object_type_num = object_type_pair.second.second;
       if (send_json.isMember(obj_type_str))
       {
-        printf("Found %s\n", obj_type_str.c_str());
         for (int object_id = 0; object_id < object_type_num; object_id++)
         {
-          printf("Found %s with id %d\n", obj_type_str.c_str(), object_id);
           if (object_type_int == mjOBJ_JOINT && m->jnt_type[object_id] == mjJNT_FREE)
           {
             continue;
@@ -353,16 +351,13 @@ namespace mujoco::plugin::multiverse_connector
             mju_warning("%s with id %d does not have a name\n", obj_type_str.c_str(), object_id);
             continue;
           }
-          printf("Found %s with name %s\n", obj_type_str.c_str(), object_name);
           config.send_objects[object_name] = {};
           for (const Json::Value &attribute_json : send_json[obj_type_str])
           {
             const std::string attribute_name = attribute_json.asString();
-            printf("Found %s with attribute %s\n", object_name, attribute_name.c_str());
             int attr_size = 0;
             if (is_attribute_valid(object_name, attribute_name, object_type_int, attr_size, m))
             {
-              printf("2 Found %s with attribute %s\n", object_name, attribute_name.c_str());
               config.send_objects[object_name].insert(attribute_name);
             }
           }
