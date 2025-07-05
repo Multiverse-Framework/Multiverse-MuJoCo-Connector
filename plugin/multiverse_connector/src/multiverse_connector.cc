@@ -156,7 +156,7 @@ bool is_attribute_valid(const std::string &obj_name, const std::string &attr_nam
   }
   case mjOBJ_ACTUATOR:
   {
-    const std::set<const char *> actuator_attributes = {"cmd_joint_rvalue", "cmd_joint_tvalue", "cmd_joint_angular_velocity", "cmd_joint_linear_velocity", "cmd_joint_angular_acceleration", "cmd_joint_linear_acceleration", "cmd_joint_torque", "cmd_joint_force"};
+    const std::set<const char *> actuator_attributes = {"scalar", "cmd_joint_rvalue", "cmd_joint_tvalue", "cmd_joint_angular_velocity", "cmd_joint_linear_velocity", "cmd_joint_angular_acceleration", "cmd_joint_linear_acceleration", "cmd_joint_torque", "cmd_joint_force"};
     if (std::find(actuator_attributes.begin(), actuator_attributes.end(), attr_name) != actuator_attributes.end())
     {
       attr_size = 1;
@@ -860,7 +860,8 @@ namespace mujoco::plugin::multiverse_connector
       {
         for (const std::string &attribute_name : send_object.second)
         {
-          if (strcmp(attribute_name.c_str(), "cmd_joint_rvalue") == 0 ||
+          if (strcmp(attribute_name.c_str(), "scalar") == 0 ||
+              strcmp(attribute_name.c_str(), "cmd_joint_rvalue") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_tvalue") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_angular_velocity") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_linear_velocity") == 0 ||
@@ -1052,7 +1053,8 @@ namespace mujoco::plugin::multiverse_connector
         const std::string actuator_name = send_object.first;
         for (const std::string &attribute_name : send_object.second)
         {
-          if (strcmp(attribute_name.c_str(), "cmd_joint_rvalue") == 0 ||
+          if (strcmp(attribute_name.c_str(), "scalar") == 0 ||
+              strcmp(attribute_name.c_str(), "cmd_joint_rvalue") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_tvalue") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_angular_velocity") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_linear_velocity") == 0 ||
@@ -1201,7 +1203,8 @@ namespace mujoco::plugin::multiverse_connector
         const std::string actuator_name = receive_object.first;
         for (const std::string &attribute_name : receive_object.second)
         {
-          if (strcmp(attribute_name.c_str(), "cmd_joint_rvalue") == 0 ||
+          if (strcmp(attribute_name.c_str(), "scalar") == 0 ||
+              strcmp(attribute_name.c_str(), "cmd_joint_rvalue") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_tvalue") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_angular_velocity") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_linear_velocity") == 0 ||
