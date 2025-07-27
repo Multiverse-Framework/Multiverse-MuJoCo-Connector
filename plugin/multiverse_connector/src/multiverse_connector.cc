@@ -164,6 +164,26 @@ bool is_attribute_valid(const std::string &obj_name, const std::string &attr_nam
     }
     return false;
   }
+  case mjOBJ_SENSOR:
+  {
+    const int sensor_id = mj_name2id(m, mjOBJ_SENSOR, obj_name.c_str());
+    if (sensor_id == -1)
+    {
+      return false;
+    }
+    const int sensor_dim = m->sensor_dim[sensor_id];
+    if (sensor_dim != 1)
+    {
+      return false;
+    }
+    const std::set<const char *> actuator_attributes = {"scalar"};
+    if (std::find(actuator_attributes.begin(), actuator_attributes.end(), attr_name) != actuator_attributes.end())
+    {
+      attr_size = 1;
+      return true;
+    }
+    return false;
+  }
   default:
     mju_warning("Object type %d is not supported\n", obj_type);
     return false;
@@ -329,7 +349,8 @@ namespace mujoco::plugin::multiverse_connector
     {
       {"body", {mjOBJ_BODY, m->nbody}},
       {"joint", {mjOBJ_JOINT, m->njnt}},
-      {"actuator", {mjOBJ_ACTUATOR, m->nu}}
+      {"actuator", {mjOBJ_ACTUATOR, m->nu}},
+      {"sensor", {mjOBJ_SENSOR, m->nsensor}},
     };
     for (const std::pair<const std::string, std::pair<int, int>> &object_type_pair : obj_type_map)
     {
@@ -370,7 +391,7 @@ namespace mujoco::plugin::multiverse_connector
       for (const Json::Value &attribute_json : send_json[object_name])
       {
         const std::string attribute_name = attribute_json.asString();
-        for (const int obj_type : {mjOBJ_BODY, mjOBJ_JOINT, mjOBJ_ACTUATOR})
+        for (const int obj_type : {mjOBJ_BODY, mjOBJ_JOINT, mjOBJ_ACTUATOR, mjOBJ_SENSOR})
         {
           int attr_size = 0;
           if (is_attribute_valid(object_name, attribute_name, obj_type, attr_size, m))
@@ -565,7 +586,8 @@ namespace mujoco::plugin::multiverse_connector
       const int body_id = mj_name2id(m_, mjtObj::mjOBJ_BODY, send_object.first.c_str());
       const int joint_id = mj_name2id(m_, mjtObj::mjOBJ_JOINT, send_object.first.c_str());
       const int actuator_id = mj_name2id(m_, mjtObj::mjOBJ_ACTUATOR, send_object.first.c_str());
-      if (body_id != -1 || joint_id != -1 || actuator_id != -1)
+      const int sensor_id = mj_name2id(m_, mjtObj::mjOBJ_SENSOR, send_object.first.c_str());
+      if (body_id != -1 || joint_id != -1 || actuator_id != -1 || sensor_id != -1)
       {
         const std::string object_name = send_object.first;
         for (const std::string &attribute_name : send_object.second)
@@ -912,6 +934,7 @@ namespace mujoco::plugin::multiverse_connector
       const int mocap_id = m_->body_mocapid[body_id];
       const int joint_id = mj_name2id(m_, mjtObj::mjOBJ_JOINT, send_object.first.c_str());
       const int actuator_id = mj_name2id(m_, mjtObj::mjOBJ_ACTUATOR, send_object.first.c_str());
+      const int sensor_id = mj_name2id(m_, mjtObj::mjOBJ_SENSOR, send_object.first.c_str());
       if (body_id != -1)
       {
         const std::string body_name = send_object.first;
@@ -1068,6 +1091,22 @@ namespace mujoco::plugin::multiverse_connector
           else if (body_id == -1 && joint_id == -1)
           {
             printf("Send %s for %s not supported\n", attribute_name.c_str(), actuator_name.c_str());
+          }
+        }
+      }
+      if (sensor_id != -1)
+      {
+        const std::string sensor_name = send_object.first;
+        for (const std::string &attribute_name : send_object.second)
+        {
+          if (strcmp(attribute_name.c_str(), "scalar") == 0)
+          {
+            const int sensor_adr = m_->sensor_adr[sensor_id];
+            send_data_vec.emplace_back(&d_->sensordata[sensor_adr]);
+          }
+          else
+          {
+            mju_warning("Send %s for %s not supported\n", attribute_name.c_str(), sensor_name.c_str());
           }
         }
       }
