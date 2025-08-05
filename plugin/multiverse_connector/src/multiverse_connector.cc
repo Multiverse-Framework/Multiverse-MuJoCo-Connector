@@ -108,9 +108,14 @@ bool is_attribute_valid(const std::string &obj_name, const std::string &attr_nam
       attr_size = 4;
       return true;
     }
-    else if (strcmp(attr_name.c_str(), "relative_velocity") == 0 && body_state == BodyState::FREE)
+    else if (strcmp(attr_name.c_str(), "linear_velocity") == 0 && body_state == BodyState::FREE)
     {
-      attr_size = 6;
+      attr_size = 3;
+      return true;
+    }
+    else if (strcmp(attr_name.c_str(), "angular_velocity") == 0 && body_state == BodyState::FREE)
+    {
+      attr_size = 3;
       return true;
     }
     else if (strcmp(attr_name.c_str(), "odometric_velocity") == 0)
@@ -136,7 +141,7 @@ bool is_attribute_valid(const std::string &obj_name, const std::string &attr_nam
     const int joint_type = m->jnt_type[joint_id];
     if (joint_type == mjJNT_HINGE)
     {
-      const std::set<const char *> joint_attributes = {"joint_rvalue", "joint_angular_velocity", "joint_angular_acceleration", "joint_torque",};
+      const std::set<const char *> joint_attributes = {"joint_angular_position", "joint_angular_velocity", "joint_angular_acceleration", "joint_torque",};
       if (std::find(joint_attributes.begin(), joint_attributes.end(), attr_name) != joint_attributes.end())
       {
         attr_size = 1;
@@ -145,7 +150,7 @@ bool is_attribute_valid(const std::string &obj_name, const std::string &attr_nam
     }
     else if (joint_type == mjJNT_SLIDE)
     {
-      const std::set<const char *> joint_attributes = {"joint_tvalue", "joint_linear_velocity", "joint_linear_acceleration", "joint_force"};
+      const std::set<const char *> joint_attributes = {"joint_linear_position", "joint_linear_velocity", "joint_linear_acceleration", "joint_force"};
       if (std::find(joint_attributes.begin(), joint_attributes.end(), attr_name) != joint_attributes.end())
       {
         attr_size = 1;
@@ -156,7 +161,7 @@ bool is_attribute_valid(const std::string &obj_name, const std::string &attr_nam
   }
   case mjOBJ_ACTUATOR:
   {
-    const std::set<const char *> actuator_attributes = {"scalar", "cmd_joint_rvalue", "cmd_joint_tvalue", "cmd_joint_angular_velocity", "cmd_joint_linear_velocity", "cmd_joint_angular_acceleration", "cmd_joint_linear_acceleration", "cmd_joint_torque", "cmd_joint_force"};
+    const std::set<const char *> actuator_attributes = {"scalar", "cmd_joint_angular_position", "cmd_joint_linear_position", "cmd_joint_angular_velocity", "cmd_joint_linear_velocity", "cmd_joint_angular_acceleration", "cmd_joint_linear_acceleration", "cmd_joint_torque", "cmd_joint_force"};
     if (std::find(actuator_attributes.begin(), actuator_attributes.end(), attr_name) != actuator_attributes.end())
     {
       attr_size = 1;
@@ -697,20 +702,27 @@ namespace mujoco::plugin::multiverse_connector
                 xquat_desired[3] = z_json.asDouble();
               }
             }
-            else if (strcmp(attribute_name.c_str(), "relative_velocity") == 0)
+            else if (strcmp(attribute_name.c_str(), "linear_velocity") == 0)
             {
               const Json::Value qvel_lin_x = attribute_data[0];
               const Json::Value qvel_lin_y = attribute_data[1];
               const Json::Value qvel_lin_z = attribute_data[2];
-              const Json::Value qvel_ang_x = attribute_data[3];
-              const Json::Value qvel_ang_y = attribute_data[4];
-              const Json::Value qvel_ang_z = attribute_data[5];
-              if (!qvel_lin_x.isNull() && !qvel_lin_y.isNull() && !qvel_lin_z.isNull() && !qvel_ang_x.isNull() && !qvel_ang_y.isNull() && !qvel_ang_z.isNull())
+              if (!qvel_lin_x.isNull() && !qvel_lin_y.isNull() && !qvel_lin_z.isNull())
               {
                 const int qvel_adr = m_->body_dofadr[body_id];
                 d_->qvel[qvel_adr] = qvel_lin_x.asDouble();
                 d_->qvel[qvel_adr + 1] = qvel_lin_y.asDouble();
                 d_->qvel[qvel_adr + 2] = qvel_lin_z.asDouble();
+              }
+            }
+            else if (strcmp(attribute_name.c_str(), "angular_velocity") == 0)
+            {
+              const Json::Value qvel_ang_x = attribute_data[0];
+              const Json::Value qvel_ang_y = attribute_data[1];
+              const Json::Value qvel_ang_z = attribute_data[2];
+              if (!qvel_ang_x.isNull() && !qvel_ang_y.isNull() && !qvel_ang_z.isNull())
+              {
+                const int qvel_adr = m_->body_dofadr[body_id];
                 d_->qvel[qvel_adr + 3] = qvel_ang_x.asDouble();
                 d_->qvel[qvel_adr + 4] = qvel_ang_y.asDouble();
                 d_->qvel[qvel_adr + 5] = qvel_ang_z.asDouble();
@@ -820,8 +832,8 @@ namespace mujoco::plugin::multiverse_connector
         for (const std::string &attribute_name : send_object.second)
         {
           const Json::Value attribute_data = response_meta_data_json["send"][send_object.first][attribute_name];
-          if ((strcmp(attribute_name.c_str(), "joint_rvalue") == 0 && is_revolute_joint) ||
-              (strcmp(attribute_name.c_str(), "joint_tvalue") == 0 && is_prismatic_joint))
+          if ((strcmp(attribute_name.c_str(), "joint_angular_position") == 0 && is_revolute_joint) ||
+              (strcmp(attribute_name.c_str(), "joint_linear_position") == 0 && is_prismatic_joint))
           {
             const Json::Value v_json = attribute_data[0];
             if (!v_json.isNull())
@@ -883,8 +895,8 @@ namespace mujoco::plugin::multiverse_connector
         for (const std::string &attribute_name : send_object.second)
         {
           if (strcmp(attribute_name.c_str(), "scalar") == 0 ||
-              strcmp(attribute_name.c_str(), "cmd_joint_rvalue") == 0 ||
-              strcmp(attribute_name.c_str(), "cmd_joint_tvalue") == 0 ||
+              strcmp(attribute_name.c_str(), "cmd_joint_angular_position") == 0 ||
+              strcmp(attribute_name.c_str(), "cmd_joint_linear_position") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_angular_velocity") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_linear_velocity") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_angular_acceleration") == 0 ||
@@ -1002,11 +1014,14 @@ namespace mujoco::plugin::multiverse_connector
               send_data_vec.emplace_back(&contact_efforts[body_id][4]);
               send_data_vec.emplace_back(&contact_efforts[body_id][5]);
             }
-            else if (strcmp(attribute_name.c_str(), "relative_velocity") == 0 && body_state == BodyState::FREE)
+            else if (strcmp(attribute_name.c_str(), "linear_velocity") == 0 && body_state == BodyState::FREE)
             {
               send_data_vec.emplace_back(&d_->qvel[dof_id]);
               send_data_vec.emplace_back(&d_->qvel[dof_id + 1]);
               send_data_vec.emplace_back(&d_->qvel[dof_id + 2]);
+            }
+            else if (strcmp(attribute_name.c_str(), "angular_velocity") == 0 && body_state == BodyState::FREE)
+            {
               send_data_vec.emplace_back(&d_->qvel[dof_id + 3]);
               send_data_vec.emplace_back(&d_->qvel[dof_id + 4]);
               send_data_vec.emplace_back(&d_->qvel[dof_id + 5]);
@@ -1034,8 +1049,8 @@ namespace mujoco::plugin::multiverse_connector
           const bool is_revolute_joint = m_->jnt_type[joint_id] == mjtJoint::mjJNT_HINGE;
           const bool is_prismatic_joint = m_->jnt_type[joint_id] == mjtJoint::mjJNT_SLIDE;
           const bool is_ball_joint = m_->jnt_type[joint_id] == mjtJoint::mjJNT_BALL;
-          if ((strcmp(attribute_name.c_str(), "joint_rvalue") == 0 && is_revolute_joint) ||
-              (strcmp(attribute_name.c_str(), "joint_tvalue") == 0 && is_prismatic_joint))
+          if ((strcmp(attribute_name.c_str(), "joint_angular_position") == 0 && is_revolute_joint) ||
+              (strcmp(attribute_name.c_str(), "joint_linear_position") == 0 && is_prismatic_joint))
           {
             send_data_vec.emplace_back(&d_->qpos[qpos_id]);
           }
@@ -1077,8 +1092,8 @@ namespace mujoco::plugin::multiverse_connector
         for (const std::string &attribute_name : send_object.second)
         {
           if (strcmp(attribute_name.c_str(), "scalar") == 0 ||
-              strcmp(attribute_name.c_str(), "cmd_joint_rvalue") == 0 ||
-              strcmp(attribute_name.c_str(), "cmd_joint_tvalue") == 0 ||
+              strcmp(attribute_name.c_str(), "cmd_joint_angular_position") == 0 ||
+              strcmp(attribute_name.c_str(), "cmd_joint_linear_position") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_angular_velocity") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_linear_velocity") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_angular_acceleration") == 0 ||
@@ -1184,11 +1199,14 @@ namespace mujoco::plugin::multiverse_connector
               receive_data_vec.emplace_back(&d_->xfrc_applied[6 * body_id + 4]);
               receive_data_vec.emplace_back(&d_->xfrc_applied[6 * body_id + 5]);
             }
-            else if (strcmp(attribute_name.c_str(), "relative_velocity") == 0 && body_state == BodyState::FREE && odom_velocities.count(body_id) == 0)
+            else if (strcmp(attribute_name.c_str(), "linear_velocity") == 0 && body_state == BodyState::FREE && odom_velocities.count(body_id) == 0)
             {
               receive_data_vec.emplace_back(&d_->qvel[dof_id]);
               receive_data_vec.emplace_back(&d_->qvel[dof_id + 1]);
               receive_data_vec.emplace_back(&d_->qvel[dof_id + 2]);
+            }
+            else if (strcmp(attribute_name.c_str(), "angular_velocity") == 0 && body_state == BodyState::FREE && odom_velocities.count(body_id) == 0)
+            {
               receive_data_vec.emplace_back(&d_->qvel[dof_id + 3]);
               receive_data_vec.emplace_back(&d_->qvel[dof_id + 4]);
               receive_data_vec.emplace_back(&d_->qvel[dof_id + 5]);
@@ -1215,8 +1233,8 @@ namespace mujoco::plugin::multiverse_connector
         const bool is_prismatic_joint = m_->jnt_type[joint_id] == mjtJoint::mjJNT_SLIDE;
         for (const std::string &attribute_name : receive_object.second)
         {
-          if ((strcmp(attribute_name.c_str(), "joint_rvalue") == 0 && is_revolute_joint) ||
-              (strcmp(attribute_name.c_str(), "joint_tvalue") == 0 && is_prismatic_joint))
+          if ((strcmp(attribute_name.c_str(), "joint_angular_position") == 0 && is_revolute_joint) ||
+              (strcmp(attribute_name.c_str(), "joint_linear_position") == 0 && is_prismatic_joint))
           {
             receive_data_vec.emplace_back(&d_->qpos[qpos_id]);
           }
@@ -1243,8 +1261,8 @@ namespace mujoco::plugin::multiverse_connector
         for (const std::string &attribute_name : receive_object.second)
         {
           if (strcmp(attribute_name.c_str(), "scalar") == 0 ||
-              strcmp(attribute_name.c_str(), "cmd_joint_rvalue") == 0 ||
-              strcmp(attribute_name.c_str(), "cmd_joint_tvalue") == 0 ||
+              strcmp(attribute_name.c_str(), "cmd_joint_angular_position") == 0 ||
+              strcmp(attribute_name.c_str(), "cmd_joint_linear_position") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_angular_velocity") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_linear_velocity") == 0 ||
               strcmp(attribute_name.c_str(), "cmd_joint_angular_acceleration") == 0 ||
