@@ -26,8 +26,8 @@ if [ ! -d "$MUJOCO_SRC_DIR" ]; then
     rm -f "$SRC_DIR"/$MUJOCO_TAR_FILE
 fi
 
-BUILD_DIR=$PWD/build
-INSTALL_DIR=$PWD/install
+BUILD_DIR=$PWD/build/mujoco-$MUJOCO_VERSION
+INSTALL_DIR=$PWD/install/mujoco-$MUJOCO_VERSION
 if [ ! -d "$INSTALL_DIR" ]; then
     mkdir -p "$INSTALL_DIR"
 fi
