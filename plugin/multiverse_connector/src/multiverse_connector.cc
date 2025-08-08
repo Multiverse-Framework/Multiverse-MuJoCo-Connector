@@ -32,13 +32,16 @@
 
 #include <mujoco/mujoco.h>
 
-void replace_all(std::string& str, const std::string& from, const std::string& to) {
-  if (from.empty()) {
+void replace_all(std::string &str, const std::string &from, const std::string &to)
+{
+  if (from.empty())
+  {
     return; // Avoid infinite loop
   }
 
   size_t start_pos = 0;
-  while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
+  while ((start_pos = str.find(from, start_pos)) != std::string::npos)
+  {
     str.replace(start_pos, from.length(), to);
     start_pos += to.length(); // Move past the last replaced segment
   }
@@ -141,7 +144,12 @@ bool is_attribute_valid(const std::string &obj_name, const std::string &attr_nam
     const int joint_type = m->jnt_type[joint_id];
     if (joint_type == mjJNT_HINGE)
     {
-      const std::set<const char *> joint_attributes = {"joint_angular_position", "joint_angular_velocity", "joint_angular_acceleration", "joint_torque",};
+      const std::set<const char *> joint_attributes = {
+          "joint_angular_position",
+          "joint_angular_velocity",
+          "joint_angular_acceleration",
+          "joint_torque",
+      };
       if (std::find(joint_attributes.begin(), joint_attributes.end(), attr_name) != joint_attributes.end())
       {
         attr_size = 1;
@@ -214,8 +222,10 @@ void calculate_velocities(std::map<int, mjtNum *> &send_world_angular_velocities
   {
     const int body_id = velocity.first;
     const int dof_adr = m->body_dofadr[body_id];
-    assert(m->body_dofnum[body_id] == 6 && m->body_jntadr[body_id] != -1 && m->jnt_type[m->body_jntadr[body_id]] == mjtJoint::mjJNT_FREE);
-    mju_mulMatVec(velocity.second, d->xmat + 9 * body_id, d->qvel + dof_adr + 3, 3, 3);
+    if (m->body_dofnum[body_id] == 6 && m->body_jntadr[body_id] != -1 && m->jnt_type[m->body_jntadr[body_id]] == mjtJoint::mjJNT_FREE)
+    {
+      mju_mulMatVec(velocity.second, d->xmat + 9 * body_id, d->qvel + dof_adr + 3, 3, 3);
+    }
   }
   mj_freeStack(d);
 }
@@ -227,10 +237,12 @@ void apply_velocities(std::map<int, mjtNum *> &receive_world_velocities, const m
   {
     const int body_id = velocity.first;
     const int dof_adr = m->body_dofadr[body_id];
-    assert(m->body_dofnum[body_id] == 6 && m->body_jntadr[body_id] != -1 && m->jnt_type[m->body_jntadr[body_id]] == mjtJoint::mjJNT_FREE);
-    mjtNum R_T[9];
-    mju_transpose(R_T, d->xmat + 9 * body_id, 3, 3);
-    mju_mulMatVec(d->qvel + dof_adr + 3, R_T, velocity.second, 3, 3);
+    if (m->body_dofnum[body_id] == 6 && m->body_jntadr[body_id] != -1 && m->jnt_type[m->body_jntadr[body_id]] == mjtJoint::mjJNT_FREE)
+    {
+      mjtNum R_T[9];
+      mju_transpose(R_T, d->xmat + 9 * body_id, 3, 3);
+      mju_mulMatVec(d->qvel + dof_adr + 3, R_T, velocity.second, 3, 3);
+    }
   }
   mj_freeStack(d);
 }
@@ -378,13 +390,13 @@ namespace mujoco::plugin::multiverse_connector
     std::string send_json_str = GetStringAttr(m, instance, send_str);
     replace_all(send_json_str, "'", "\"");
     Json::Value send_json = string_to_json(send_json_str);
-    const std::map<std::string, std::pair<int, int>> obj_type_map = 
-    {
-      {"body", {mjOBJ_BODY, m->nbody}},
-      {"joint", {mjOBJ_JOINT, m->njnt}},
-      {"actuator", {mjOBJ_ACTUATOR, m->nu}},
-      {"sensor", {mjOBJ_SENSOR, m->nsensor}},
-    };
+    const std::map<std::string, std::pair<int, int>> obj_type_map =
+        {
+            {"body", {mjOBJ_BODY, m->nbody}},
+            {"joint", {mjOBJ_JOINT, m->njnt}},
+            {"actuator", {mjOBJ_ACTUATOR, m->nu}},
+            {"sensor", {mjOBJ_SENSOR, m->nsensor}},
+        };
     for (const std::pair<const std::string, std::pair<int, int>> &object_type_pair : obj_type_map)
     {
       const std::string &obj_type_str = object_type_pair.first;
