@@ -207,7 +207,35 @@ void calculate_contact_efforts(std::map<int, mjtNum *> &contact_efforts, const m
   mj_freeStack(d);
 }
 
-void calculate_odom_velocities(std::map<int, mjtNum *> &odom_velocities, const mjModel *m, const mjData *d)
+void calculate_velocities(std::map<int, mjtNum *> &send_world_angular_velocities, const mjModel *m, mjData *d)
+{
+  mj_markStack(d);
+  for (std::pair<const int, mjtNum *> &velocity : send_world_angular_velocities)
+  {
+    const int body_id = velocity.first;
+    const int dof_adr = m->body_dofadr[body_id];
+    assert(m->body_dofnum[body_id] == 6 && m->body_jntadr[body_id] != -1 && m->jnt_type[m->body_jntadr[body_id]] == mjtJoint::mjJNT_FREE);
+    mju_mulMatVec(velocity.second, d->xmat + 9 * body_id, d->qvel + dof_adr + 3, 3, 3);
+  }
+  mj_freeStack(d);
+}
+
+void apply_velocities(std::map<int, mjtNum *> &receive_world_velocities, const mjModel *m, mjData *d)
+{
+  mj_markStack(d);
+  for (std::pair<const int, mjtNum *> &velocity : receive_world_velocities)
+  {
+    const int body_id = velocity.first;
+    const int dof_adr = m->body_dofadr[body_id];
+    assert(m->body_dofnum[body_id] == 6 && m->body_jntadr[body_id] != -1 && m->jnt_type[m->body_jntadr[body_id]] == mjtJoint::mjJNT_FREE);
+    mjtNum R_T[9];
+    mju_transpose(R_T, d->xmat + 9 * body_id, 3, 3);
+    mju_mulMatVec(d->qvel + dof_adr + 3, R_T, velocity.second, 3, 3);
+  }
+  mj_freeStack(d);
+}
+
+void apply_odom_velocities(std::map<int, mjtNum *> &odom_velocities, const mjModel *m, const mjData *d)
 {
   for (std::pair<const int, mjtNum *> &odom_velocity : odom_velocities)
   {
@@ -722,10 +750,13 @@ namespace mujoco::plugin::multiverse_connector
               const Json::Value qvel_ang_z = attribute_data[2];
               if (!qvel_ang_x.isNull() && !qvel_ang_y.isNull() && !qvel_ang_z.isNull())
               {
-                const int qvel_adr = m_->body_dofadr[body_id];
-                d_->qvel[qvel_adr + 3] = qvel_ang_x.asDouble();
-                d_->qvel[qvel_adr + 4] = qvel_ang_y.asDouble();
-                d_->qvel[qvel_adr + 5] = qvel_ang_z.asDouble();
+                if (send_world_angular_velocities.count(body_id) == 0)
+                {
+                  send_world_angular_velocities[body_id] = (mjtNum *)calloc(6, sizeof(mjtNum));
+                }
+                send_world_angular_velocities[body_id][3] = qvel_ang_x.asDouble();
+                send_world_angular_velocities[body_id][4] = qvel_ang_y.asDouble();
+                send_world_angular_velocities[body_id][5] = qvel_ang_z.asDouble();
               }
             }
             else if (strcmp(attribute_name.c_str(), "odometric_velocity") == 0)
@@ -931,6 +962,14 @@ namespace mujoco::plugin::multiverse_connector
       }
     }
     contact_efforts.clear();
+    for (std::pair<const int, mjtNum *> &velocity : send_world_angular_velocities)
+    {
+      if (velocity.second != nullptr)
+      {
+        free(velocity.second);
+      }
+    }
+    send_world_angular_velocities.clear();
   }
 
   void MultiverseConnector::reset()
@@ -1020,11 +1059,15 @@ namespace mujoco::plugin::multiverse_connector
               send_data_vec.emplace_back(&d_->qvel[dof_id + 1]);
               send_data_vec.emplace_back(&d_->qvel[dof_id + 2]);
             }
-            else if (strcmp(attribute_name.c_str(), "angular_velocity") == 0 && body_state == BodyState::FREE)
+            else if (strcmp(attribute_name.c_str(), "angular_velocity") == 0)
             {
-              send_data_vec.emplace_back(&d_->qvel[dof_id + 3]);
-              send_data_vec.emplace_back(&d_->qvel[dof_id + 4]);
-              send_data_vec.emplace_back(&d_->qvel[dof_id + 5]);
+              if (send_world_angular_velocities.count(body_id) == 0)
+              {
+                send_world_angular_velocities[body_id] = (mjtNum *)calloc(3, sizeof(mjtNum));
+              }
+              send_data_vec.emplace_back(&send_world_angular_velocities[body_id][0]);
+              send_data_vec.emplace_back(&send_world_angular_velocities[body_id][1]);
+              send_data_vec.emplace_back(&send_world_angular_velocities[body_id][2]);
             }
             else if (strcmp(attribute_name.c_str(), "odometric_velocity") == 0 && m_->body_dofnum[body_id] <= 6 && m_->body_jntadr[body_id] != -1)
             {
@@ -1205,11 +1248,15 @@ namespace mujoco::plugin::multiverse_connector
               receive_data_vec.emplace_back(&d_->qvel[dof_id + 1]);
               receive_data_vec.emplace_back(&d_->qvel[dof_id + 2]);
             }
-            else if (strcmp(attribute_name.c_str(), "angular_velocity") == 0 && body_state == BodyState::FREE && odom_velocities.count(body_id) == 0)
+            else if (strcmp(attribute_name.c_str(), "angular_velocity") == 0)
             {
-              receive_data_vec.emplace_back(&d_->qvel[dof_id + 3]);
-              receive_data_vec.emplace_back(&d_->qvel[dof_id + 4]);
-              receive_data_vec.emplace_back(&d_->qvel[dof_id + 5]);
+              if (receive_world_angular_velocities.count(body_id) == 0)
+              {
+                receive_world_angular_velocities[body_id] = (mjtNum *)calloc(3, sizeof(mjtNum));
+              }
+              receive_data_vec.emplace_back(&receive_world_angular_velocities[body_id][0]);
+              receive_data_vec.emplace_back(&receive_world_angular_velocities[body_id][1]);
+              receive_data_vec.emplace_back(&receive_world_angular_velocities[body_id][2]);
             }
             else if (strcmp(attribute_name.c_str(), "odometric_velocity") == 0 && m_->body_dofnum[body_id] <= 6 && m_->body_jntadr[body_id] != -1 && odom_velocities.count(body_id) == 0)
             {
@@ -1290,7 +1337,9 @@ namespace mujoco::plugin::multiverse_connector
       return;
     }
 
-    calculate_contact_efforts(contact_efforts, m_, d_);
+    apply_odom_velocities(odom_velocities, m_, d_);
+
+    apply_velocities(receive_world_angular_velocities, m_, d_);
 
     for (size_t i = 0; i < send_buffer.buffer_double.size; i++)
     {
@@ -1306,12 +1355,14 @@ namespace mujoco::plugin::multiverse_connector
       return;
     }
 
-    calculate_odom_velocities(odom_velocities, m_, d_);
-
     for (size_t i = 0; i < receive_buffer.buffer_double.size; i++)
     {
       *receive_data_vec[i] = receive_buffer.buffer_double.data[i];
     }
+
+    calculate_velocities(send_world_angular_velocities, m_, d_);
+
+    calculate_contact_efforts(contact_efforts, m_, d_);
   }
 
 } // namespace mujoco::plugin::multiverse_connector
