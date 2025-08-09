@@ -86,9 +86,9 @@ namespace mujoco::plugin::multiverse_connector
 
     std::map<int, mjtNum *> odom_velocities;
 
-    std::map<int, mjtNum *> send_world_angular_velocities;
+    std::map<int, mjtNum *> send_world_velocities;
 
-    std::map<int, mjtNum *> receive_world_angular_velocities;
+    std::map<int, mjtNum *> receive_world_velocities;
 
   private:
     void start_connect_to_server_thread() override;

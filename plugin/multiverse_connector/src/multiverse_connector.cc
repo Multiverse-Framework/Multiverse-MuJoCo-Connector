@@ -99,8 +99,6 @@ bool is_attribute_valid(const std::string &obj_name, const std::string &attr_nam
   {
   case mjOBJ_BODY:
   {
-    const int body_id = mj_name2id(m, mjOBJ_BODY, obj_name.c_str());
-    const BodyState body_state = get_body_state(m, body_id);
     if (strcmp(attr_name.c_str(), "position") == 0)
     {
       attr_size = 3;
@@ -111,12 +109,12 @@ bool is_attribute_valid(const std::string &obj_name, const std::string &attr_nam
       attr_size = 4;
       return true;
     }
-    else if (strcmp(attr_name.c_str(), "linear_velocity") == 0 && body_state == BodyState::FREE)
+    else if (strcmp(attr_name.c_str(), "linear_velocity") == 0)
     {
       attr_size = 3;
       return true;
     }
-    else if (strcmp(attr_name.c_str(), "angular_velocity") == 0 && body_state == BodyState::FREE)
+    else if (strcmp(attr_name.c_str(), "angular_velocity") == 0)
     {
       attr_size = 3;
       return true;
@@ -126,12 +124,12 @@ bool is_attribute_valid(const std::string &obj_name, const std::string &attr_nam
       attr_size = 6;
       return true;
     }
-    else if (strcmp(attr_name.c_str(), "force") == 0 && body_state == BodyState::FREE)
+    else if (strcmp(attr_name.c_str(), "force") == 0)
     {
       attr_size = 3;
       return true;
     }
-    else if (strcmp(attr_name.c_str(), "torque") == 0 && body_state == BodyState::FREE)
+    else if (strcmp(attr_name.c_str(), "torque") == 0)
     {
       attr_size = 3;
       return true;
@@ -215,17 +213,14 @@ void calculate_contact_efforts(std::map<int, mjtNum *> &contact_efforts, const m
   mj_freeStack(d);
 }
 
-void calculate_velocities(std::map<int, mjtNum *> &send_world_angular_velocities, const mjModel *m, mjData *d)
+void calculate_velocities(std::map<int, mjtNum *> &send_world_velocities, const mjModel *m, mjData *d)
 {
   mj_markStack(d);
-  for (std::pair<const int, mjtNum *> &velocity : send_world_angular_velocities)
+  for (std::pair<const int, mjtNum *> &velocity : send_world_velocities)
   {
-    const int body_id = velocity.first;
-    const int dof_adr = m->body_dofadr[body_id];
-    if (m->body_dofnum[body_id] == 6 && m->body_jntadr[body_id] != -1 && m->jnt_type[m->body_jntadr[body_id]] == mjtJoint::mjJNT_FREE)
-    {
-      mju_mulMatVec(velocity.second, d->xmat + 9 * body_id, d->qvel + dof_adr + 3, 3, 3);
-    }
+    mjtNum *jac = mj_stackAllocNum(d, 6 * m->nv);
+    mj_jacBodyCom(m, d, jac, jac + 3 * m->nv, velocity.first);
+    mju_mulMatVec(velocity.second, jac, d->qvel, 6, m->nv);
   }
   mj_freeStack(d);
 }
@@ -236,12 +231,14 @@ void apply_velocities(std::map<int, mjtNum *> &receive_world_velocities, const m
   for (std::pair<const int, mjtNum *> &velocity : receive_world_velocities)
   {
     const int body_id = velocity.first;
-    const int dof_adr = m->body_dofadr[body_id];
-    if (m->body_dofnum[body_id] == 6 && m->body_jntadr[body_id] != -1 && m->jnt_type[m->body_jntadr[body_id]] == mjtJoint::mjJNT_FREE)
+    const int jnt_id = m->body_jntadr[body_id];
+    const int dof_id = m->body_dofadr[body_id];
+    if (m->body_dofnum[body_id] == 6 && jnt_id != -1 && m->jnt_type[jnt_id] == mjtJoint::mjJNT_FREE)
     {
+      mju_copy3(d->qvel + dof_id, velocity.second);
       mjtNum R_T[9];
       mju_transpose(R_T, d->xmat + 9 * body_id, 3, 3);
-      mju_mulMatVec(d->qvel + dof_adr + 3, R_T, velocity.second, 3, 3);
+      mju_mulMatVec(d->qvel + dof_id + 3, R_T, velocity.second + 3, 3, 3);
     }
   }
   mj_freeStack(d);
@@ -252,18 +249,18 @@ void apply_odom_velocities(std::map<int, mjtNum *> &odom_velocities, const mjMod
   for (std::pair<const int, mjtNum *> &odom_velocity : odom_velocities)
   {
     const int body_id = odom_velocity.first;
-    const int dof_adr = m->body_dofadr[body_id];
+    const int dof_id = m->body_dofadr[body_id];
     if (m->body_dofnum[body_id] == 6 &&
         m->body_jntadr[body_id] != -1 &&
         m->jnt_type[m->body_jntadr[body_id]] == mjtJoint::mjJNT_FREE)
     {
       const int joint_adr = m->body_jntadr[body_id];
-      const int qpos_adr = m->jnt_qposadr[joint_adr];
+      const int qpos_id = m->jnt_qposadr[joint_adr];
 
-      const mjtNum w = (d->qpos + qpos_adr)[3];
-      const mjtNum x = (d->qpos + qpos_adr)[4];
-      const mjtNum y = (d->qpos + qpos_adr)[5];
-      const mjtNum z = (d->qpos + qpos_adr)[6];
+      const mjtNum w = (d->qpos + qpos_id)[3];
+      const mjtNum x = (d->qpos + qpos_id)[4];
+      const mjtNum y = (d->qpos + qpos_id)[5];
+      const mjtNum z = (d->qpos + qpos_id)[6];
 
       const mjtNum sinr_cosp = 2 * (w * x + y * z);
       const mjtNum cosr_cosp = 1 - 2 * (x * x + y * y);
@@ -284,7 +281,7 @@ void apply_odom_velocities(std::map<int, mjtNum *> &odom_velocities, const mjMod
       const mjtNum cosy_cosp = 1 - 2 * (y * y + z * z);
       mjtNum odom_ang_z_joint_pos = std::atan2(siny_cosp, cosy_cosp);
 
-      mjtNum *qvel = d->qvel + dof_adr;
+      mjtNum *qvel = d->qvel + dof_id;
       qvel[0] = odom_velocity.second[0] * mju_cos(odom_ang_y_joint_pos) * mju_cos(odom_ang_z_joint_pos) + odom_velocity.second[1] * (mju_sin(odom_ang_x_joint_pos) * mju_sin(odom_ang_y_joint_pos) * mju_cos(odom_ang_z_joint_pos) - mju_cos(odom_ang_x_joint_pos) * mju_sin(odom_ang_z_joint_pos)) + odom_velocity.second[2] * (mju_cos(odom_ang_x_joint_pos) * mju_sin(odom_ang_y_joint_pos) * mju_cos(odom_ang_z_joint_pos) + mju_sin(odom_ang_x_joint_pos) * mju_sin(odom_ang_z_joint_pos));
       qvel[1] = odom_velocity.second[0] * mju_cos(odom_ang_y_joint_pos) * mju_sin(odom_ang_z_joint_pos) + odom_velocity.second[1] * (mju_sin(odom_ang_x_joint_pos) * mju_sin(odom_ang_y_joint_pos) * mju_sin(odom_ang_z_joint_pos) + mju_cos(odom_ang_x_joint_pos) * mju_cos(odom_ang_z_joint_pos)) + odom_velocity.second[2] * (mju_cos(odom_ang_x_joint_pos) * mju_sin(odom_ang_y_joint_pos) * mju_sin(odom_ang_z_joint_pos) - mju_sin(odom_ang_x_joint_pos) * mju_cos(odom_ang_z_joint_pos));
       qvel[2] = odom_velocity.second[0] * mju_sin(odom_ang_y_joint_pos) + odom_velocity.second[1] * mju_sin(odom_ang_x_joint_pos) * mju_cos(odom_ang_y_joint_pos) + odom_velocity.second[2] * mju_cos(odom_ang_x_joint_pos) * mju_cos(odom_ang_y_joint_pos);
@@ -301,20 +298,20 @@ void apply_odom_velocities(std::map<int, mjtNum *> &odom_velocities, const mjMod
       const int joint_adr = m->body_jntadr[body_id];
       for (int joint_id = joint_adr; joint_id < joint_adr + m->body_jntnum[body_id]; joint_id++)
       {
-        const int qpos_adr = m->jnt_qposadr[joint_id];
+        const int qpos_id = m->jnt_qposadr[joint_id];
         if (m->jnt_type[joint_id] == mjtJoint::mjJNT_HINGE)
         {
           if (mju_abs(m->jnt_axis[3 * joint_id] - 1.0) < mjMINVAL && mju_abs(m->jnt_axis[3 * joint_id + 1]) < mjMINVAL && mju_abs(m->jnt_axis[3 * joint_id + 2]) < mjMINVAL)
           {
-            odom_ang_x_joint_pos = d->qpos[qpos_adr];
+            odom_ang_x_joint_pos = d->qpos[qpos_id];
           }
           else if (mju_abs(m->jnt_axis[3 * joint_id + 1] - 1.0) < mjMINVAL && mju_abs(m->jnt_axis[3 * joint_id + 2]) < mjMINVAL && mju_abs(m->jnt_axis[3 * joint_id]) < mjMINVAL)
           {
-            odom_ang_y_joint_pos = d->qpos[qpos_adr];
+            odom_ang_y_joint_pos = d->qpos[qpos_id];
           }
           else if (mju_abs(m->jnt_axis[3 * joint_id + 2] - 1.0) < mjMINVAL && mju_abs(m->jnt_axis[3 * joint_id]) < mjMINVAL && mju_abs(m->jnt_axis[3 * joint_id + 1]) < mjMINVAL)
           {
-            odom_ang_z_joint_pos = d->qpos[qpos_adr];
+            odom_ang_z_joint_pos = d->qpos[qpos_id];
           }
         }
       }
@@ -749,10 +746,10 @@ namespace mujoco::plugin::multiverse_connector
               const Json::Value qvel_lin_z = attribute_data[2];
               if (!qvel_lin_x.isNull() && !qvel_lin_y.isNull() && !qvel_lin_z.isNull())
               {
-                const int qvel_adr = m_->body_dofadr[body_id];
-                d_->qvel[qvel_adr] = qvel_lin_x.asDouble();
-                d_->qvel[qvel_adr + 1] = qvel_lin_y.asDouble();
-                d_->qvel[qvel_adr + 2] = qvel_lin_z.asDouble();
+                const int dof_id = m_->body_dofadr[body_id];
+                d_->qvel[dof_id] = qvel_lin_x.asDouble();
+                d_->qvel[dof_id + 1] = qvel_lin_y.asDouble();
+                d_->qvel[dof_id + 2] = qvel_lin_z.asDouble();
               }
             }
             else if (strcmp(attribute_name.c_str(), "angular_velocity") == 0)
@@ -762,13 +759,10 @@ namespace mujoco::plugin::multiverse_connector
               const Json::Value qvel_ang_z = attribute_data[2];
               if (!qvel_ang_x.isNull() && !qvel_ang_y.isNull() && !qvel_ang_z.isNull())
               {
-                if (send_world_angular_velocities.count(body_id) == 0)
-                {
-                  send_world_angular_velocities[body_id] = (mjtNum *)calloc(6, sizeof(mjtNum));
-                }
-                send_world_angular_velocities[body_id][3] = qvel_ang_x.asDouble();
-                send_world_angular_velocities[body_id][4] = qvel_ang_y.asDouble();
-                send_world_angular_velocities[body_id][5] = qvel_ang_z.asDouble();
+                const int dof_id = m_->body_dofadr[body_id];
+                d_->qvel[dof_id + 3] = qvel_ang_x.asDouble();
+                d_->qvel[dof_id + 4] = qvel_ang_y.asDouble();
+                d_->qvel[dof_id + 5] = qvel_ang_z.asDouble();
               }
             }
             else if (strcmp(attribute_name.c_str(), "odometric_velocity") == 0)
@@ -791,14 +785,14 @@ namespace mujoco::plugin::multiverse_connector
             }
           }
 
-          const int qpos_adr = m_->jnt_qposadr[m_->body_jntadr[body_id]];
-          d_->qpos[qpos_adr] = xpos_desired[0];
-          d_->qpos[qpos_adr + 1] = xpos_desired[1];
-          d_->qpos[qpos_adr + 2] = xpos_desired[2];
-          d_->qpos[qpos_adr + 3] = xquat_desired[0];
-          d_->qpos[qpos_adr + 4] = xquat_desired[1];
-          d_->qpos[qpos_adr + 5] = xquat_desired[2];
-          d_->qpos[qpos_adr + 6] = xquat_desired[3];
+          const int qpos_id = m_->jnt_qposadr[m_->body_jntadr[body_id]];
+          d_->qpos[qpos_id] = xpos_desired[0];
+          d_->qpos[qpos_id + 1] = xpos_desired[1];
+          d_->qpos[qpos_id + 2] = xpos_desired[2];
+          d_->qpos[qpos_id + 3] = xquat_desired[0];
+          d_->qpos[qpos_id + 4] = xquat_desired[1];
+          d_->qpos[qpos_id + 5] = xquat_desired[2];
+          d_->qpos[qpos_id + 6] = xquat_desired[3];
 
           break;
         }
@@ -924,11 +918,11 @@ namespace mujoco::plugin::multiverse_connector
 
             if (!w_json.isNull() && !x_json.isNull() && !y_json.isNull() && !z_json.isNull())
             {
-              const int qpos_adr = m_->jnt_qposadr[joint_id];
-              d_->qpos[qpos_adr] = w_json.asDouble();
-              d_->qpos[qpos_adr + 1] = x_json.asDouble();
-              d_->qpos[qpos_adr + 2] = y_json.asDouble();
-              d_->qpos[qpos_adr + 3] = z_json.asDouble();
+              const int qpos_id = m_->jnt_qposadr[joint_id];
+              d_->qpos[qpos_id] = w_json.asDouble();
+              d_->qpos[qpos_id + 1] = x_json.asDouble();
+              d_->qpos[qpos_id + 2] = y_json.asDouble();
+              d_->qpos[qpos_id + 3] = z_json.asDouble();
             }
           }
         }
@@ -974,14 +968,22 @@ namespace mujoco::plugin::multiverse_connector
       }
     }
     contact_efforts.clear();
-    for (std::pair<const int, mjtNum *> &velocity : send_world_angular_velocities)
+    for (std::pair<const int, mjtNum *> &velocity : send_world_velocities)
     {
       if (velocity.second != nullptr)
       {
         free(velocity.second);
       }
     }
-    send_world_angular_velocities.clear();
+    send_world_velocities.clear();
+    for (std::pair<const int, mjtNum *> &velocity : receive_world_velocities)
+    {
+      if (velocity.second != nullptr)
+      {
+        free(velocity.second);
+      }
+    }
+    send_world_velocities.clear();
   }
 
   void MultiverseConnector::reset()
@@ -1026,8 +1028,6 @@ namespace mujoco::plugin::multiverse_connector
         }
         else
         {
-          const int dof_id = m_->body_dofadr[body_id];
-          const BodyState body_state = get_body_state(m_, body_id);
           for (const std::string &attribute_name : send_object.second)
           {
             if (strcmp(attribute_name.c_str(), "position") == 0)
@@ -1043,7 +1043,7 @@ namespace mujoco::plugin::multiverse_connector
               send_data_vec.emplace_back(&d_->xquat[4 * body_id + 2]);
               send_data_vec.emplace_back(&d_->xquat[4 * body_id + 3]);
             }
-            else if (strcmp(attribute_name.c_str(), "force") == 0 && body_state == BodyState::FREE)
+            else if (strcmp(attribute_name.c_str(), "force") == 0)
             {
               if (contact_efforts.count(body_id) == 0)
               {
@@ -1054,7 +1054,7 @@ namespace mujoco::plugin::multiverse_connector
               send_data_vec.emplace_back(&contact_efforts[body_id][1]);
               send_data_vec.emplace_back(&contact_efforts[body_id][2]);
             }
-            else if (strcmp(attribute_name.c_str(), "torque") == 0 && body_state == BodyState::FREE)
+            else if (strcmp(attribute_name.c_str(), "torque") == 0)
             {
               if (contact_efforts.count(body_id) == 0)
               {
@@ -1065,21 +1065,25 @@ namespace mujoco::plugin::multiverse_connector
               send_data_vec.emplace_back(&contact_efforts[body_id][4]);
               send_data_vec.emplace_back(&contact_efforts[body_id][5]);
             }
-            else if (strcmp(attribute_name.c_str(), "linear_velocity") == 0 && body_state == BodyState::FREE)
+            else if (strcmp(attribute_name.c_str(), "linear_velocity") == 0)
             {
-              send_data_vec.emplace_back(&d_->qvel[dof_id]);
-              send_data_vec.emplace_back(&d_->qvel[dof_id + 1]);
-              send_data_vec.emplace_back(&d_->qvel[dof_id + 2]);
+              if (send_world_velocities.count(body_id) == 0)
+              {
+                send_world_velocities[body_id] = (mjtNum *)calloc(6, sizeof(mjtNum));
+              }
+              send_data_vec.emplace_back(&send_world_velocities[body_id][0]);
+              send_data_vec.emplace_back(&send_world_velocities[body_id][1]);
+              send_data_vec.emplace_back(&send_world_velocities[body_id][2]);
             }
             else if (strcmp(attribute_name.c_str(), "angular_velocity") == 0)
             {
-              if (send_world_angular_velocities.count(body_id) == 0)
+              if (send_world_velocities.count(body_id) == 0)
               {
-                send_world_angular_velocities[body_id] = (mjtNum *)calloc(3, sizeof(mjtNum));
+                send_world_velocities[body_id] = (mjtNum *)calloc(6, sizeof(mjtNum));
               }
-              send_data_vec.emplace_back(&send_world_angular_velocities[body_id][0]);
-              send_data_vec.emplace_back(&send_world_angular_velocities[body_id][1]);
-              send_data_vec.emplace_back(&send_world_angular_velocities[body_id][2]);
+              send_data_vec.emplace_back(&send_world_velocities[body_id][3]);
+              send_data_vec.emplace_back(&send_world_velocities[body_id][4]);
+              send_data_vec.emplace_back(&send_world_velocities[body_id][5]);
             }
             else if (strcmp(attribute_name.c_str(), "odometric_velocity") == 0 && m_->body_dofnum[body_id] <= 6 && m_->body_jntadr[body_id] != -1)
             {
@@ -1213,7 +1217,6 @@ namespace mujoco::plugin::multiverse_connector
         }
         else
         {
-          const int dof_id = m_->body_dofadr[body_id];
           for (const std::string &attribute_name : receive_object.second)
           {
             if (strcmp(attribute_name.c_str(), "position") == 0 && body_state == BodyState::FREE)
@@ -1256,19 +1259,23 @@ namespace mujoco::plugin::multiverse_connector
             }
             else if (strcmp(attribute_name.c_str(), "linear_velocity") == 0 && body_state == BodyState::FREE && odom_velocities.count(body_id) == 0)
             {
-              receive_data_vec.emplace_back(&d_->qvel[dof_id]);
-              receive_data_vec.emplace_back(&d_->qvel[dof_id + 1]);
-              receive_data_vec.emplace_back(&d_->qvel[dof_id + 2]);
-            }
-            else if (strcmp(attribute_name.c_str(), "angular_velocity") == 0)
-            {
-              if (receive_world_angular_velocities.count(body_id) == 0)
+              if (receive_world_velocities.count(body_id) == 0)
               {
-                receive_world_angular_velocities[body_id] = (mjtNum *)calloc(3, sizeof(mjtNum));
+                receive_world_velocities[body_id] = (mjtNum *)calloc(6, sizeof(mjtNum));
               }
-              receive_data_vec.emplace_back(&receive_world_angular_velocities[body_id][0]);
-              receive_data_vec.emplace_back(&receive_world_angular_velocities[body_id][1]);
-              receive_data_vec.emplace_back(&receive_world_angular_velocities[body_id][2]);
+              receive_data_vec.emplace_back(&receive_world_velocities[body_id][0]);
+              receive_data_vec.emplace_back(&receive_world_velocities[body_id][1]);
+              receive_data_vec.emplace_back(&receive_world_velocities[body_id][2]);
+            }
+            else if (strcmp(attribute_name.c_str(), "angular_velocity") == 0 && body_state == BodyState::FREE && odom_velocities.count(body_id) == 0)
+            {
+              if (receive_world_velocities.count(body_id) == 0)
+              {
+                receive_world_velocities[body_id] = (mjtNum *)calloc(6, sizeof(mjtNum));
+              }
+              receive_data_vec.emplace_back(&receive_world_velocities[body_id][3]);
+              receive_data_vec.emplace_back(&receive_world_velocities[body_id][4]);
+              receive_data_vec.emplace_back(&receive_world_velocities[body_id][5]);
             }
             else if (strcmp(attribute_name.c_str(), "odometric_velocity") == 0 && m_->body_dofnum[body_id] <= 6 && m_->body_jntadr[body_id] != -1 && odom_velocities.count(body_id) == 0)
             {
@@ -1351,7 +1358,11 @@ namespace mujoco::plugin::multiverse_connector
 
     apply_odom_velocities(odom_velocities, m_, d_);
 
-    apply_velocities(receive_world_angular_velocities, m_, d_);
+    apply_velocities(receive_world_velocities, m_, d_);
+
+    calculate_velocities(send_world_velocities, m_, d_);
+
+    calculate_contact_efforts(contact_efforts, m_, d_);
 
     for (size_t i = 0; i < send_buffer.buffer_double.size; i++)
     {
@@ -1371,10 +1382,6 @@ namespace mujoco::plugin::multiverse_connector
     {
       *receive_data_vec[i] = receive_buffer.buffer_double.data[i];
     }
-
-    calculate_velocities(send_world_angular_velocities, m_, d_);
-
-    calculate_contact_efforts(contact_efforts, m_, d_);
   }
 
 } // namespace mujoco::plugin::multiverse_connector
