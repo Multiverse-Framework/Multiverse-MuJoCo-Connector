@@ -16,7 +16,7 @@ if [ ! -d "$CMAKE_DIR" ]; then
 fi
 CMAKE_EXECUTABLE=$CMAKE_DIR/bin/cmake
 
-MUJOCO_VERSION=3.3.5
+MUJOCO_VERSION=3.3.7
 MUJOCO_SRC_DIR=$SRC_DIR/mujoco-$MUJOCO_VERSION
 if [ ! -d "$MUJOCO_SRC_DIR" ]; then
     mkdir -p "$MUJOCO_SRC_DIR"
