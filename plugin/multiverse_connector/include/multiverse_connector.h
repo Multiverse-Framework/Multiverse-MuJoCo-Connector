@@ -88,6 +88,8 @@ namespace mujoco::plugin::multiverse_connector
 
     std::map<int, mjtNum *> send_world_velocities;
 
+    std::map<int, mjtNum *> send_world_accelerations;
+
     std::map<int, mjtNum *> receive_world_velocities;
 
   private:
