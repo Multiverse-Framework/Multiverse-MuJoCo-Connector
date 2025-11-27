@@ -73,6 +73,8 @@ namespace mujoco::plugin::multiverse_connector
 
     MultiverseConfig config_;
 
+    bool need_forward_dynamics_calculation = false;
+
   private:
     mjModel *m_ = nullptr;
 

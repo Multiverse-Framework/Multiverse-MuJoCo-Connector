@@ -1201,6 +1201,7 @@ namespace mujoco::plugin::multiverse_connector
                    (strcmp(attribute_name.c_str(), "joint_force") == 0 && is_prismatic_joint))
           {
             send_data_vec.emplace_back(&d_->qfrc_inverse[dof_id]);
+            need_forward_dynamics_calculation = true;
           }
           else if (strcmp(attribute_name.c_str(), "joint_position") == 0)
           {
@@ -1428,6 +1429,11 @@ namespace mujoco::plugin::multiverse_connector
     {
       mju_warning("Mismatch between send_data_vec [%zd] and send_buffer.buffer_double.size [%zd]\n", send_data_vec.size(), send_buffer.buffer_double.size);
       return;
+    }
+
+    if (need_forward_dynamics_calculation)
+    {
+      mj_inverseSkip(m_, d_, mjSTAGE_VEL, 1);
     }
 
     apply_odom_velocities(odom_velocities, m_, d_);
