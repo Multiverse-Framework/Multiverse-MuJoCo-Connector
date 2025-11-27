@@ -51,7 +51,7 @@ for MUJOCO_VERSION in 3.2.7 3.3.{0..7}; do
     if [ ! -d "$MUJOCO_PLUGIN_DIR" ]; then
         mkdir -p "$MUJOCO_PLUGIN_DIR"
     fi
-    cp -f "$BUILD_DIR"/lib/libmultiverse_connector.so "$MUJOCO_PLUGIN_DIR"
+    cp -f "$BUILD_DIR"/lib/libmultiverse_connector.so "$MUJOCO_PLUGIN_DIR/libmultiverse_connector.so"
     ln -sf "$MUJOCO_PLUGIN_DIR" "$INSTALL_DIR"/bin/mujoco_plugin
 
     end_time=$(date +%s)
