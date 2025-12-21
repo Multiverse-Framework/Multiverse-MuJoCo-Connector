@@ -1,0 +1,42 @@
+<mujoco model="cube_simulation">
+  <compiler angle="radian" />
+  <option timestep="0.001" integrator="RK4">
+    <flag contact="disable" energy="enable" />
+  </option>
+  <size nkey="1" />
+  <visual>
+    <global azimuth="225" elevation="-30" />
+  </visual>
+  <asset>
+    <texture type="skybox" colorspace="auto" builtin="gradient" rgb1="1 1 1" rgb2="0.6 0.8 1" width="256" height="1536" />
+  </asset>
+  <worldbody>
+    <body name="cube" pos="1.5 0 1">
+      <joint type="free" />
+      <geom size="0.1 0.1 0.1" type="box" mass="10" rgba="0 0 0.9 0" />
+    </body>
+    <body name="cursor" pos="1.5 0 1" mocap="true">
+      <geom size="0.1 0.1 0.1" type="box" rgba="0 0 0.9 1" />
+    </body>
+  </worldbody>
+  <equality>
+    <weld body1="cursor" body2="cube" anchor="0 0 0" relpose="0 0 0 0 0 0 0" torquescale="1" />
+  </equality>
+  <keyframe>
+    <key name="home" qpos="1.5 0 1 1 0 0 0" />
+  </keyframe>
+  <extension>
+    <plugin plugin="mujoco.multiverse_connector">
+      <instance name="mujoco_client">
+        <config key="transport" value="tcp" />
+        <config key="host" value="127.0.0.1" />
+        <config key="server_port" value="9000" />
+        <config key="client_port" value="7504" />
+        <config key="world_name" value="world" />
+        <config key="simulation_name" value="cube_simulation" />
+        <config key="send" value="{'cube': ['relative_velocity', 'position', 'quaternion']}" />
+        <config key="receive" value="{}" />
+      </instance>
+    </plugin>
+  </extension>
+</mujoco>

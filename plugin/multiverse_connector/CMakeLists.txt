@@ -24,8 +24,8 @@ target_include_directories(multiverse_connector PRIVATE ${MUJOCO_MULTIVERSE_CONN
 target_link_directories(multiverse_connector PRIVATE ${MUJOCO_MULTIVERSE_CONNECTOR_LIB})
 target_link_libraries(multiverse_connector PRIVATE
   mujoco
-  multiverse_client_json
-  multiverse_client
+  multiverse_client_json_all
+  multiverse_client_all
   jsoncpp
   ${ZMQ_LIB}
 )

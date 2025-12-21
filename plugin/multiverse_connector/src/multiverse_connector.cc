@@ -380,6 +380,7 @@ void apply_odom_velocities(std::map<int, mjtNum *> &odom_velocities, const mjMod
 
 namespace mujoco::plugin::multiverse_connector
 {
+  constexpr char transport_str[] = "transport";
   constexpr char host_str[] = "host";
   constexpr char server_port_str[] = "server_port";
   constexpr char client_port_str[] = "client_port";
@@ -397,6 +398,7 @@ namespace mujoco::plugin::multiverse_connector
   MultiverseConnector *MultiverseConnector::Create(const mjModel *m, mjData *d, int instance)
   {
     MultiverseConfig config;
+    config.transport = GetStringAttr(m, instance, transport_str, config.transport);
     config.host = GetStringAttr(m, instance, host_str, config.host);
     config.server_port = GetStringAttr(m, instance, server_port_str, config.server_port);
     config.client_port = GetStringAttr(m, instance, client_port_str, config.client_port);
@@ -520,7 +522,7 @@ namespace mujoco::plugin::multiverse_connector
     plugin.name = "mujoco.multiverse_connector";
     plugin.capabilityflags |= mjPLUGIN_PASSIVE;
 
-    std::vector<const char *> attributes = {host_str, server_port_str, client_port_str, world_name_str, simulation_name_str, send_str, receive_str};
+    std::vector<const char *> attributes = {transport_str, host_str, server_port_str, client_port_str, world_name_str, simulation_name_str, send_str, receive_str};
     plugin.nattribute = attributes.size();
     plugin.attributes = attributes.data();
     plugin.nstate = MultiverseConnector::StateSize;
@@ -557,6 +559,23 @@ namespace mujoco::plugin::multiverse_connector
   MultiverseConnector::MultiverseConnector(MultiverseConfig config, const mjModel *m, mjData *d)
       : config_(std::move(config)), m_((mjModel *)m), d_(d)
   {
+    if (config_.transport == "tcp")
+    {
+      set_transport(ClientTransportType::Tcp);
+    }
+    else if (config_.transport == "udp")
+    {
+      set_transport(ClientTransportType::Udp);
+    }
+    else if (config_.transport == "zmq")
+    {
+      set_transport(ClientTransportType::Zmq);
+    }
+    else
+    {
+      mju_warning("Transport %s is not supported. It must be 'tcp', 'udp', or 'zmq'. Using 'tcp' as default.\n", config_.transport.c_str());
+      set_transport(ClientTransportType::Tcp);
+    }
     host = config_.host;
     server_port = config_.server_port;
     client_port = config_.client_port;

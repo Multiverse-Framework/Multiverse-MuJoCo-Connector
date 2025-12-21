@@ -33,7 +33,8 @@ namespace mujoco::plugin::multiverse_connector
 {
   struct MultiverseConfig
   {
-    std::string host = "tcp://127.0.0.1";
+    std::string transport = "tcp";
+    std::string host = "127.0.0.1";
     std::string server_port = "7000";
     std::string client_port = "7500";
     std::string world_name = "world";

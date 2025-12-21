@@ -16,7 +16,8 @@ if [ ! -d "$CMAKE_DIR" ]; then
 fi
 CMAKE_EXECUTABLE=$CMAKE_DIR/bin/cmake
 
-for MUJOCO_VERSION in 3.2.7 3.3.{0..7}; do
+# for MUJOCO_VERSION in 3.2.7 3.3.{0..7} 3.4.0; do
+for MUJOCO_VERSION in 3.4.0; do
     echo "$MUJOCO_VERSION"
     MUJOCO_SRC_DIR=$SRC_DIR/mujoco-$MUJOCO_VERSION
     if [ ! -d "$MUJOCO_SRC_DIR" ]; then
@@ -43,7 +44,9 @@ for MUJOCO_VERSION in 3.2.7 3.3.{0..7}; do
         echo "$LINE_TO_ADD" >> "$CMAKE_PATH"
     fi
 
-    $CMAKE_EXECUTABLE -S "$MUJOCO_SRC_DIR" -B "$BUILD_DIR" -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" -DMUJOCO_BUILD_EXAMPLES=OFF -DMUJOCO_BUILD_TESTS=OFF -DMUJOCO_BUILD_SIMULATE=ON -DMUJOCO_TEST_PYTHON_UTIL=OFF -DCMAKE_POLICY_VERSION_MINIMUM="3.5" -Wno-deprecated -Wno-dev
+    if [ ! -f "$BUILD_DIR"/CMakeCache.txt ]; then
+        $CMAKE_EXECUTABLE -S "$MUJOCO_SRC_DIR" -B "$BUILD_DIR" -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" -DMUJOCO_BUILD_EXAMPLES=OFF -DMUJOCO_BUILD_TESTS=OFF -DMUJOCO_BUILD_SIMULATE=ON -DMUJOCO_TEST_PYTHON_UTIL=OFF -DCMAKE_POLICY_VERSION_MINIMUM="3.5" -Wno-deprecated -Wno-dev
+    fi
     $CMAKE_EXECUTABLE --build "$BUILD_DIR"
     $CMAKE_EXECUTABLE --install "$BUILD_DIR"
 
@@ -52,7 +55,9 @@ for MUJOCO_VERSION in 3.2.7 3.3.{0..7}; do
         mkdir -p "$MUJOCO_PLUGIN_DIR"
     fi
     cp -f "$BUILD_DIR"/lib/libmultiverse_connector.so "$MUJOCO_PLUGIN_DIR/libmultiverse_connector.so"
-    ln -sf "$MUJOCO_PLUGIN_DIR" "$INSTALL_DIR"/bin/mujoco_plugin
+    if [ ! -f "$INSTALL_DIR"/bin/mujoco_plugin/libmultiverse_connector.so ]; then
+        ln -sf "$MUJOCO_PLUGIN_DIR" "$INSTALL_DIR"/bin/mujoco_plugin
+    fi
 
     end_time=$(date +%s)
     elapsed=$(( end_time - start_time ))
