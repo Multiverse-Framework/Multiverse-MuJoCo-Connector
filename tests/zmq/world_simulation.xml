@@ -25,7 +25,7 @@
       <instance name="mujoco_client">
         <config key="transport" value="zmq" />
         <config key="host" value="tcp://127.0.0.1" />
-        <config key="server_port" value="9000" />
+        <config key="server_port" value="7000" />
         <config key="client_port" value="7501" />
         <config key="world_name" value="world" />
         <config key="simulation_name" value="world_simulation" />
