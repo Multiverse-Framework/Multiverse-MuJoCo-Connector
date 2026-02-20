@@ -17,7 +17,7 @@ fi
 CMAKE_EXECUTABLE=$CMAKE_DIR/bin/cmake
 
 # for MUJOCO_VERSION in 3.2.7 3.3.{0..7} 3.4.0; do
-for MUJOCO_VERSION in 3.4.0 3.5.0; do
+for MUJOCO_VERSION in 3.4.0; do
     echo "$MUJOCO_VERSION"
     MUJOCO_SRC_DIR=$SRC_DIR/mujoco-$MUJOCO_VERSION
     if [ ! -d "$MUJOCO_SRC_DIR" ]; then

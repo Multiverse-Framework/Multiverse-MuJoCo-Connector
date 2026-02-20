@@ -17,6 +17,9 @@
 
 namespace mujoco::plugin::multiverse_connector {
 
-mjPLUGIN_LIB_INIT { MultiverseConnector::RegisterPlugin(); }
+mjPLUGIN_LIB_INIT
+{
+    MultiverseConnector::RegisterPlugin();
+}
 
-}  // namespace mujoco::plugin::multiverse_connector
+} // namespace mujoco::plugin::multiverse_connector

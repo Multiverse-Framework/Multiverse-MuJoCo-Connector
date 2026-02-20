@@ -29,10 +29,9 @@
 #include <mujoco/mjmodel.h>
 #include <mujoco/mjtnum.h>
 
-namespace mujoco::plugin::multiverse_connector
+namespace mujoco::plugin::multiverse_connector {
+struct MultiverseConfig
 {
-  struct MultiverseConfig
-  {
     std::string transport = "tcp";
     std::string host = "127.0.0.1";
     std::string server_port = "7000";
@@ -41,61 +40,61 @@ namespace mujoco::plugin::multiverse_connector
     std::string simulation_name = "mujoco_simulation";
     std::map<std::string, std::set<std::string>> send_objects = {};
     std::map<std::string, std::set<std::string>> receive_objects = {};
-  };
+};
 
-  // An multiverse_connector plugin which implements configurable MULTIVERSE_CONNECTOR control.
-  class MultiverseConnector : public MultiverseClientJson
-  {
-  public:
+// An multiverse_connector plugin which implements configurable MULTIVERSE_CONNECTOR control.
+class MultiverseConnector : public MultiverseClientJson
+{
+public:
     // Returns an instance of MultiverseConnector. The result can be null in case of
     // misconfiguration.
-    static MultiverseConnector *Create(const mjModel *m, mjData *d, int instance);
+    static MultiverseConnector* Create(const mjModel* m, mjData* d, int instance);
 
     // Returns the number of state variables for the plugin instance
-    static int StateSize(const mjModel *m, int instance);
+    static int StateSize(const mjModel* m, int instance);
 
     // Resets the C++ MultiverseConnector instance's state.
     // plugin_state is a C array pointer into mjData->plugin_state, with a size
     // equal to the value returned from StateSize.
-    void Reset(mjtNum *plugin_state);
+    void Reset(mjtNum* plugin_state);
 
     // Idempotent computation which updates d->actuator_force and the internal
     // state of the class. Called after ActDot.
-    void Compute(const mjModel *m, mjData *d, int instance);
+    void Compute(const mjModel* m, mjData* d, int instance);
 
     // Updates plugin state.
-    void Advance(const mjModel *m, mjData *d, int instance) const;
+    void Advance(const mjModel* m, mjData* d, int instance) const;
 
     // Adds the MULTIVERSE_CONNECTOR plugin to the global registry of MuJoCo plugins.
     static void RegisterPlugin();
 
-  private:
-    MultiverseConnector(MultiverseConfig config, const mjModel *m, mjData *d);
+private:
+    MultiverseConnector(MultiverseConfig config, const mjModel* m, mjData* d);
 
     MultiverseConfig config_;
 
     bool need_forward_dynamics_calculation = false;
 
-  private:
-    mjModel *m_ = nullptr;
+private:
+    mjModel* m_ = nullptr;
 
-    mjData *d_ = nullptr;
+    mjData* d_ = nullptr;
 
     std::vector<mjtNum*> send_data_vec;
 
     std::vector<mjtNum*> receive_data_vec;
 
-    std::map<int, mjtNum *> contact_efforts;
+    std::map<int, mjtNum*> contact_efforts;
 
-    std::map<int, mjtNum *> odom_velocities;
+    std::map<int, mjtNum*> odom_velocities;
 
-    std::map<int, mjtNum *> send_world_velocities;
+    std::map<int, mjtNum*> send_world_velocities;
 
-    std::map<int, mjtNum *> send_world_accelerations;
+    std::map<int, mjtNum*> send_world_accelerations;
 
-    std::map<int, mjtNum *> receive_world_velocities;
+    std::map<int, mjtNum*> receive_world_velocities;
 
-  private:
+private:
     void start_connect_to_server_thread() override;
 
     void wait_for_connect_to_server_thread_finish() override;
@@ -123,7 +122,7 @@ namespace mujoco::plugin::multiverse_connector
     void clean_up() override;
 
     void reset() override;
-  };
+};
 
 } // namespace mujoco::plugin::multiverse_connector
 

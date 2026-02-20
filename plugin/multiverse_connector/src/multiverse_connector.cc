@@ -1091,8 +1091,10 @@ void MultiverseConnector::bind_response_meta_data()
             }
         }
     }
+    *world_time = response_meta_data_json["time"].asDouble();
     if (m_->nkey > 0)
     {
+        m_->key_time[0] = *world_time;
         for (int jnt_id = 0; jnt_id < m_->njnt; jnt_id++)
         {
             if (m_->jnt_type[jnt_id] == mjJNT_FREE)
@@ -1161,8 +1163,10 @@ void MultiverseConnector::clean_up()
 
 void MultiverseConnector::reset()
 {
+    d_->time = 0.0;
     if (m_->nkey > 0)
     {
+        d_->time = m_->key_time[0];
         for (int i = 0; i < m_->nq; i++)
         {
             d_->qpos[i] = m_->key_qpos[i];
@@ -1188,7 +1192,6 @@ void MultiverseConnector::reset()
             d_->ctrl[i] = m_->key_ctrl[i];
         }
     }
-    d_->time = 0.0;
 }
 
 void MultiverseConnector::init_send_and_receive_data()
